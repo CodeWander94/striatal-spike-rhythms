@@ -52,7 +52,7 @@ cfg_master.maxPeakn = 0.2; % if peak wv difference (normalized) with previous da
 cfg_master.iS = []; % current session number out of fd list, get this from input cfg
 cfg_master.fc = []; % full list of session fd's, get this from input cfg
 cfg_master.fc_extra = []; % get this from input cfg
-cfg_master.nShuf = 10;
+cfg_master.nShuf = 1;
 
 cfg_master = ProcessConfig(cfg_master,cfg_in);
 
@@ -324,6 +324,7 @@ for iC = nCells:-1:1
     mn = fieldnames(sd.m);
     for iM = 1:length(mn)
        sd.m.(mn{iM}).err(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
+       sd.m.(mn{iM}).shufErr(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
        sd.m.(mn{iM}).tstat(cc, :) = nan(1, nMaxVars);
     end
 
@@ -348,13 +349,13 @@ for iC = nCells:-1:1
                 sd.m.(mn{iModel}).varnames = this_m.PredictorNames;
                 
                 % refine model by throwing out ineffective predictors
-                toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
-                for iToss = 1:length(toss)
-                    if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
-                        this_m.removeTerms(toss{iToss});
-                    end
-                end
-
+                %toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
+                %for iToss = 1:length(toss)
+                %    if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
+                %        this_m.removeTerms(toss{iToss});
+                %   end
+                %end
+                
                 % test it and add resulting error to running total
                 this_err = this_m.predict(p(te_idx,:));
                 this_err = (this_err - spk_binned(te_idx)).^2;
@@ -373,36 +374,50 @@ for iC = nCells:-1:1
         
         fprintf('Shuffle %d...\n', iShuf);
         
-        for iFold = 1:C{iPleat}.NumTestSets
+        for iPleat = 1:cfg_master.nPleats
             
-            tr_idx = C{iPleat}.training(iFold); te_idx = C{iPleat}.test(iFold);
-            
-            % shuffle LFP data
-            p_shuf = shiftLFPdata(p);
-                       
-            this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial')
-
-            % refine model by throwing out ineffective predictors
-            toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
-            for iToss = 1:length(toss)
-                if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
-                    this_m.removeTerms(toss{iToss});
+            for iFold = 1:C{iPleat}.NumTestSets
+                
+                tr_idx = C{iPleat}.training(iFold); te_idx = C{iPleat}.test(iFold);
+                
+                % shift LFP data relative to spike data & fit model again
+                p_shuf = shiftLFPdata(p);
+                
+                this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial')
+                
+                % refine model by throwing out ineffective predictors
+                toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
+                for iToss = 1:length(toss)
+                    if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
+                        this_m.removeTerms(toss{iToss});
+                    end
                 end
-            end
+                
+                % test it and add resulting error to running total
+                this_err = this_m.predict(p_shuf(te_idx,:));
+                this_err = (this_err - spk_binned(te_idx)).^2;
+                
+                % NOTE THIS ONLY WORKS WHEN DOING 1 SHUFFLE! OTHERWISE NEED TO
+                % INDEX BY SHUFFLE
+                sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + (this_err ./ cfg_master.nPleats)';
+                
+            end % of shuffle folds
             
-            % test it and add resulting error to running total
-            this_err = this_m.predict(p(te_idx,:));
-            this_err = (this_err - spk_binned(te_idx)).^2;
-            
-            shuf_err(iShuf, iFold) = nanmean(this_err);
-            
-        end % of shuffle folds
+        end % of pleats
+        
     end % of shuffles
     
     % average across folds
-    shuf_err = nansum(shuf_err, 2); % first sum across folds
-    sd.m.(mn{iModel}).shufErrMean = nanmean(shuf_err);
-    sd.m.(mn{iModel}).shufErrSD = nanstd(shuf_err);
+    %shuf_err = nansum(shuf_err, 2); % first sum across folds
+        
+    % average across shuffles if needed
+    %if cfg_master.nShuf > 1
+    %    sd.m.(mn{iModel}).shufErrMean = nanmean(shuf_err);
+    %    sd.m.(mn{iModel}).shufErrSD = nanstd(shuf_err);
+    %else
+    %    sd.m.(mn{iModel}).shufErrMean = shuf_err;
+    %    sd.m.(mn{iModel}).shufErrSD = [];
+    %end
     
     cc = cc + 1;
 end % over cells
@@ -486,10 +501,13 @@ if cfg_master.writeOutput
             
             % TTR
             [~, sd.m.(mn{iM}).ttr_err(iC,:), ~] = MakeTC_1D(cfg_ttr, sd.TVECc, sd.t_to_reward, sd.TVECc, this_cell_err);
+            % DO SHUFFLE HERE
             
             % space
             [~, sd.m.(mn{iM}).linpos_err(iC,:), ~] = MakeTC_1D(cfg_linpos, sd.linpos.tvec, sd.linpos.data, sd.TVECc, this_cell_err);
-   
+            % DO SHUFFLE HERE
+            
+            
         end % loop over cells
     
     end % loop over models
@@ -510,6 +528,7 @@ if cfg_master.writeOutput
         sd.m.baseline.err = nanmean(sd.m.baseline.err, 2);
         for iM = 1:length(mn)
             sd.m.(mn{iM}).err = nanmean(sd.m.(mn{iM}).err, 2);
+            sd.m.(mn{iM}).shufErr = nanmean(sd.m.(mn{iM}).shufErr, 2);
         end
     end
     
