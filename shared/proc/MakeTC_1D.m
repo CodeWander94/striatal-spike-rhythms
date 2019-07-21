@@ -19,11 +19,16 @@ function [predicted_x, lambda_x, x_binned] = MakeTC_1D(cfg, tvec, data, TVECc, s
 % predicted_x: predicted value of tuning variable for each TVECc input
 %   sample (simply looked up in lambda_x)
 
-x_interp = interp1(tvec, data, TVECc, cfg.interp); % get variable of interest on common timebase 
-[x_occ_hist, ~, x_binned] = histcounts(x_interp, cfg.bins); % bin variable of interest
+% get variable of interest on common timebase 
+x_interp = interp1(tvec, data, TVECc, cfg.interp);
+
+% bin variable of interest
+[x_occ_hist, ~, x_binned] = histcounts(x_interp, cfg.bins); 
 x_binned(x_interp < cfg.bins(1) | x_interp >= cfg.bins(end)) = NaN;
 
-bin_edges = 0.5:1:(length(cfg.bins) - 1) + 0.5; % edges for binned version of tuning variable; minus 1 to get centers from previous histcounts use, + 0.5 for adding edge
+% edges for binned version of tuning variable; minus 1 to get centers 
+% from previous histcounts use, + 0.5 for adding edge
+bin_edges = 0.5:1:(length(cfg.bins) - 1) + 0.5; 
 
 if islogical(spk_binned) % binned spike train (binary), can use fast method
     x_spk = x_binned(spk_binned); % variable of interest at spike times
