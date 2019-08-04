@@ -5,9 +5,9 @@
 clear;
 cfg.inputDir = 'C:\temp\GLMfit'; % where the files to load are
 %cfg.inputDir = 'C:\temp\GLMfit\HC'; % where the files to load are
-cfg.input_prefix = 'S0_'; 
-%cfg.models = {'dphi','tphi','bphi','lgphi','hgphi','allphi'}; % models to be compared to baseline
-cfg.models = {'allphi'};
+cfg.input_prefix = 'S2_'; 
+cfg.models = {'dphi','tphi','bphi','lgphi','hgphi','allphi'}; % models to be compared to baseline
+%cfg.models = {'allphi'};
 cfg.nMaxCells = 1000;
 cfg.nTimeBins = 100;
 cfg.nSpaceBins = 100;
@@ -72,9 +72,11 @@ for iS = 1:nSessions
         
         % ttr err
         ALL_ttrErr(iM, start_idx:end_idx, :) = sd.m.(cfg.models{iM}).ttr_err(keep, :);
+        ALL_ttrErrShuf(iM, start_idx:end_idx, :) = sd.m.(cfg.models{iM}).ttr_errShuf(keep, :);
         
         % space err 
         ALL_spaceErr(iM, start_idx:end_idx, :) = sd.m.(cfg.models{iM}).linpos_err(keep, :);
+        ALL_spaceErrShuf(iM, start_idx:end_idx, :) = sd.m.(cfg.models{iM}).linpos_errShuf(keep, :);
         
         % t-stats
         nT = length(sd.m.(cfg.models{iM}).varnames);
@@ -272,6 +274,7 @@ for iM = 1:nModels
     figure;
     
     this_ttr = sq(ALL_ttrErr(iM, cell_keep, :));
+    this_ttrShuf = sq(ALL_ttrErrShuf(iM, cell_keep, :));
     xvec = sd.cfg.ttr_bins(1:end-1) + diff(sd.cfg.ttr_bins)/2;
     
     env_idx = strmatch(cfg.models{iM}(1), envnames); % find envelope that shares first letter with model name...
@@ -287,13 +290,18 @@ for iM = 1:nModels
     
     subplot(221);
     [ax h1 h2] = plotyy(xvec, nanmean(this_ttr), xvec, nanmean(this_env));
-    hold on;
     set(h1,'LineWidth',2);
     
+    %axes(ax(1)); 
+    hold on; 
+    plot(xvec, nanmean(this_ttrShuf), 'Color', [0.7 0.7 0.7]);
+    plot(xvec, nanmean(this_ttrShuf) + 2*nanstd(this_ttrShuf), ':', 'Color', [0.7 0.7 0.7]);
+    plot(xvec, nanmean(this_ttrShuf) - 2*nanstd(this_ttrShuf), ':', 'Color', [0.7 0.7 0.7]);
+    
     if iM == nModels % 'all'
-        set(gca,'XTick',-5:5,'LineWidth',1,'FontSize',18,'YLim',[2e-6 5e-6],'YTick',2e-6:1e-6:5e-6, 'TickDir', 'out'); box off;
+        set(gca,'XTick',-5:5,'LineWidth',1,'FontSize',18,'YLim',[-0.5e-6 5e-6],'YTick',0:1e-6:5e-6, 'TickDir', 'out'); box off;
     else
-        set(gca,'XTick',-5:5,'LineWidth',1,'FontSize',18,'YLim',[0 2e-6],'YTick',0:1e-6:2e-6, 'TickDir', 'out'); box off;
+        set(gca,'XTick',-5:5,'LineWidth',1,'FontSize',18,'YLim',[-0.5e-6 2e-6],'YTick',0:1e-6:2e-6, 'TickDir', 'out'); box off;
     end
     set(ax(2),'FontSize',18,'LineWidth',1,'YTick',[]);
 
@@ -307,12 +315,13 @@ for iM = 1:nModels
     xlabel('time from reward (s)'); ylabel('cell#'); box off;
     
     % normalize within each cell first, then average
-    this_ttr = normalizeM(this_ttr);
+    this_ttr = normalizeM(this_ttr); this_ttrShuf = normalizeM(this_ttrShuf);
     this_env = normalizeM(this_env);
     
     subplot(222);
     [ax h1 h2] = plotyy(xvec,nanmean(this_ttr),xvec,nanmean(this_env));
     hold on;
+    plot(xvec, nanmean(this_ttrShuf), 'Color', [0.7 0.7 0.7]);
     set(h1,'LineWidth',2);
     set(gca,'XTick', -5:5, 'LineWidth', 1, 'FontSize',18, 'TickDir', 'out'); box off;
     set(ax(2), 'FontSize', 18,'LineWidth', 1, 'TickDir', 'out');

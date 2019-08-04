@@ -35,13 +35,13 @@ cfg_master.f.theta = [6.5 9.5];
 cfg_master.f.beta = [14 25];
 cfg_master.f.lowGamma = [40 65];
 cfg_master.f.highGamma = [70 100];
-cfg_master.nPleats = 2;
+cfg_master.nPleats = 1;
 cfg_master.kFold = 2;
 cfg_master.plotOutput = 1;
 cfg_master.writeOutput = 0;
 cfg_master.writeFullError = 0; % write full nSamples x nCells x nModels error for each model (NOTE: takes up to 1GB per session)
 cfg_master.smooth = 501; % smoothing window (in samples) for error
-cfg_master.output_prefix = 'R0_';
+cfg_master.output_prefix = 'S0_';
 cfg_master.output_dir = 'C:\temp';
 cfg_master.ttr_bins = [-5:0.1:5]; % time bin edges for time-to-reward tuning curves
 cfg_master.linposBins = 101; % number of position bins (is autoscaled for each session)
@@ -185,11 +185,11 @@ sd.TVECc = sd.TVECc(MASTER_keep);
 nMaxVars = 15; % only used for initializing t-stat matrix
 % baseline model MUST be defined first or things will break!
 sd.m.baseline.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif';
-%sd.m.dphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + delta_phase';
-%sd.m.tphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + theta_phase';
-%sd.m.bphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + beta_phase';
-%sd.m.lgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + lowGamma_phase';
-%sd.m.hgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + highGamma_phase';
+sd.m.dphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + delta_phase';
+sd.m.tphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + theta_phase';
+sd.m.bphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + beta_phase';
+sd.m.lgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + lowGamma_phase';
+sd.m.hgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + highGamma_phase';
 sd.m.allphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + delta_phase + beta_phase + theta_phase + lowGamma_phase + highGamma_phase';
 %sd.m.all.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + delta_phase + beta_phase + theta_phase + lowGamma_phase + highGamma_phase + delta_env + beta_env + theta_env + lowGamma_env + highGamma_env';
 
@@ -368,42 +368,45 @@ for iC = nCells:-1:1
     end % over pleats
     
     % run some shuffles on final model
-    iModel = length(mn);
-    clear shuf_err;
+    %iModel = length(mn);
     for iShuf = cfg_master.nShuf:-1:1
         
         fprintf('Shuffle %d...\n', iShuf);
         
-        for iPleat = 1:cfg_master.nPleats
+        % shift LFP data relative to spike data & fit model again
+        p_shuf = shiftLFPdata(p);
+              
+        for iModel = 1:length(mn)
             
-            for iFold = 1:C{iPleat}.NumTestSets
+            for iPleat = 1:cfg_master.nPleats
                 
-                tr_idx = C{iPleat}.training(iFold); te_idx = C{iPleat}.test(iFold);
+                for iFold = 1:C{iPleat}.NumTestSets
+                    
+                    tr_idx = C{iPleat}.training(iFold); te_idx = C{iPleat}.test(iFold);
+                    
+                    this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial')
+                    
+                    % refine model by throwing out ineffective predictors
+                    %toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
+                    %for iToss = 1:length(toss)
+                    %    if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
+                    %        this_m.removeTerms(toss{iToss});
+                    %    end
+                    %end
+                    
+                    % test it and add resulting error to running total
+                    this_err = this_m.predict(p_shuf(te_idx,:));
+                    this_err = (this_err - spk_binned(te_idx)).^2;
+                    
+                    % NOTE THIS ONLY WORKS WHEN DOING 1 SHUFFLE! OTHERWISE NEED TO
+                    % INDEX BY SHUFFLE
+                    sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + ((this_err ./ cfg_master.nShuf) ./ cfg_master.nPleats)';
+                    
+                end % of shuffle folds
                 
-                % shift LFP data relative to spike data & fit model again
-                p_shuf = shiftLFPdata(p);
-                
-                this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial')
-                
-                % refine model by throwing out ineffective predictors
-                toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
-                for iToss = 1:length(toss)
-                    if ~strcmp('(Intercept)',toss{iToss}) % can't remove intercept
-                        this_m.removeTerms(toss{iToss});
-                    end
-                end
-                
-                % test it and add resulting error to running total
-                this_err = this_m.predict(p_shuf(te_idx,:));
-                this_err = (this_err - spk_binned(te_idx)).^2;
-                
-                % NOTE THIS ONLY WORKS WHEN DOING 1 SHUFFLE! OTHERWISE NEED TO
-                % INDEX BY SHUFFLE
-                sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + (this_err ./ cfg_master.nPleats)';
-                
-            end % of shuffle folds
+            end % of pleats
             
-        end % of pleats
+        end % of models
         
     end % of shuffles
     
@@ -492,20 +495,21 @@ if cfg_master.writeOutput
     
         % get error diff for this model
         this_err = sd.m.baseline.err - sd.m.(mn{iM}).err;
+        this_errShuf = sd.m.baseline.err - sd.m.(mn{iM}).shufErr;
         
         for iC = cc:-1:1
             
             % smooth
-            this_cell_err = this_err(iC,:);
-            this_cell_err = conv(this_cell_err, this_f, 'same');
+            this_cell_err = this_err(iC,:); this_cell_errShuf = this_errShuf(iC,:);
+            this_cell_err = conv(this_cell_err, this_f, 'same'); this_cell_errShuf = conv(this_cell_errShuf, this_f, 'same');
             
             % TTR
             [~, sd.m.(mn{iM}).ttr_err(iC,:), ~] = MakeTC_1D(cfg_ttr, sd.TVECc, sd.t_to_reward, sd.TVECc, this_cell_err);
-            % DO SHUFFLE HERE
+            [~, sd.m.(mn{iM}).ttr_errShuf(iC,:), ~] = MakeTC_1D(cfg_ttr, sd.TVECc, sd.t_to_reward, sd.TVECc, this_cell_errShuf);
             
             % space
             [~, sd.m.(mn{iM}).linpos_err(iC,:), ~] = MakeTC_1D(cfg_linpos, sd.linpos.tvec, sd.linpos.data, sd.TVECc, this_cell_err);
-            % DO SHUFFLE HERE
+            [~, sd.m.(mn{iM}).linpos_errShuf(iC,:), ~] = MakeTC_1D(cfg_linpos, sd.linpos.tvec, sd.linpos.data, sd.TVECc, this_cell_errShuf);
             
             
         end % loop over cells

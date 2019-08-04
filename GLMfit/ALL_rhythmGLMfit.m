@@ -1,20 +1,21 @@
 % ALL_rhythmGLMfit.m
 %
 % Batch script to run rhythmGLMfit.m on multiple sessions
-restoredefaultpath;
+%restoredefaultpath;
 %addpath(genpath('C:\Users\mvdm\Documents\GitHub\striatal-spike-rhythms'));
-addpath(genpath('D:\My_Documents\GitHub\striatal-spike-rhythms'));
+%addpath(genpath('D:\My_Documents\GitHub\striatal-spike-rhythms'));
 
 %% 
 cfg = [];
 cfg.writeOutput = 1;
 cfg.plotOutput = 0;
 cfg.output_dir = 'C:\temp\GLMfit'; % store files here
-cfg.output_prefix = 'R1_'; % prefix filenames with this (identify runs)
+cfg.output_prefix = 'S2_'; % prefix filenames with this (identify runs)
 cfg.Target = 'Striatum';
 cfg.nMinSpikes = 100;
+cfg.nShuf = 10;
 
-cfg.nPleats = 2; % number of pleats (cross-validation runs) per cell
+cfg.nPleats = 1; % number of pleats (cross-validation runs) per cell
 cfg.kFold = 2; % folds per pleat
 
 %%
@@ -30,7 +31,7 @@ for iS = 1:length(cfg.fd) % for each session...
     cfg.iS = iS;
     pushdir(cfg.fd{iS});
     
-    rhythmGLMfit2(cfg); % do the business
+    rhythmGLMfit_shuf(cfg); % do the business
     
     popdir;
     

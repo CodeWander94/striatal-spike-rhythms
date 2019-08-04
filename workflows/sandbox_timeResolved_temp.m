@@ -54,7 +54,7 @@ for iS = 1:length(fd)
     
     if length(reward_t) < 20
         disp('*** SESSION SKIPPED DUE TO INSUFFICIENT TRIALS ***');
-        return;
+        continue;
     end
     
     %% load ft format data
