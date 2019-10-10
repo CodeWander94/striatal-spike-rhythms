@@ -1,4 +1,4 @@
-function sd = rhythmGLMfit_shuf(cfg_in)
+function sd = rhythmGLMfit_v1(cfg_in)
 % GLM for spike prediction with LFP features
 %
 % as rhythmGLMfit, but add exclusion of duplicate cells
@@ -184,9 +184,16 @@ sd.TVECc = sd.TVECc(MASTER_keep);
 
 nMaxVars = 15; % only used for initializing t-stat matrix
 % baseline model MUST be defined first or things will break!
-sd.m.baseline.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif';
-sd.m.dummy.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + randnoise';
-sd.m.tphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + theta_phase';
+%sd.m.baseline.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif';
+
+%new baseline model with just cif
+sd.m.baseline.modelspec = 'spk ~ 1 + cif';
+sd.m.wspeed.modelspec = 'spk ~ 1 + cif + spd';
+sd.m.wttr.modelspec = 'spk ~ 1 + cif + ttr';
+sd.m.wlinpos.modelspec = 'spk ~ 1 + cif + linpos';
+
+%sd.m.dummy.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + randnoise';
+%sd.m.tphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + theta_phase';
 % sd.m.bphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + beta_phase';
 % sd.m.lgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + lowGamma_phase';
 % sd.m.hgphi.modelspec = 'spk ~ 1 + linpos + spd + ttr + cif + highGamma_phase';
@@ -229,8 +236,14 @@ linpos = ComputeLinPos(pos);
 %%% time / nTrials predictor
 p.time = sd.TVECc';
 
+
 %% loop over all cells 
 cc = 1;
+sd.acceptedCells = [];
+sd.speedCorr = [];
+sd.shuffledSpeedData = [];
+sd.speedTC_X = 5:10:195;
+sd.speedTC_Y = [];
 for iC = nCells:-1:1
 
     fprintf('Cell %d/%d...\n',iC,nCells);
@@ -283,6 +296,9 @@ for iC = nCells:-1:1
        continue;
     end
     
+    %if the cell hasn't been skipped
+    sd.acceptedCells = [sd.acceptedCells iC];
+    
     %%% INCLUDE SOME INFO ABOUT THIS CELL
     sd.cellType(cc) = sd.S.usr.cell_type(iC);
     sd.cellLabel{cc} = sd.S.label(iC);
@@ -304,11 +320,24 @@ for iC = nCells:-1:1
     %%% PREDICTOR: speed %%%
     cfg_spd = []; cfg_spd.interp = 'linear';
     cfg_spd.bins = 0:10:200;
-    [pred_spd, ~, spd_binned] = MakeTC_1D(cfg_spd, pos.tvec, spd.data, sd.TVECc, spk_binned);
+    [pred_spd, tcspeed, spd_binned] = MakeTC_1D(cfg_spd, pos.tvec, spd.data, sd.TVECc, spk_binned);
     p.spd = pred_spd' - nanmean(pred_spd);
+    acorr = corr(pred_spd',spd_binned');
+    sd.speedCorr = [sd.speedCorr acorr];
+    sd.speedTC_Y = [sd.speedTC_Y;tcspeed];
     
-    %%% PREDICTOR: White_Noise %%%
-    p.randnoise = wgn(length(sd.TVECc),1, 0.001);
+    %generate 1000 shuffled datapoints. Each shuffle involves circular shifting
+    %of speed data and spiking data with respect to each other. The shift
+    %is a uniformly random value between -90s to + 90 s
+    shuffled_data = zeros(1,1000);
+    for iter = 1:1000
+        cur_shift = 2*rand() - 1; %random numbers between minus/plus one
+        cur_shift = round(90000 * cur_shift); 
+        cur_shuf = circshift(pred_spd,cur_shift);
+        cur_corr = corr(cur_shuf',spd_binned');
+        shuffled_data(iter) = cur_corr;
+    end
+    sd.shuffledSpeedData = [sd.shuffledSpeedData;shuffled_data];
 
     %%% PREDICTOR: LFP phase and envelope for all defined bands %%%
     what = {'phase','env'};
@@ -332,7 +361,6 @@ for iC = nCells:-1:1
        sd.m.(mn{iM}).shufErr(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
        sd.m.(mn{iM}).tstat(cc, :) = nan(1, nMaxVars);
     end
-
     %% x-val loop
     p.spk = spk_binned;
     clear cif cif_full;
@@ -434,6 +462,12 @@ cc = cc - 1;
 if cc == 0
     return;
 end
+
+%%Saving SpeedCells and nonSpeedCells
+shuf_speed_data = reshape(sd.shuffledSpeedData,1,length(sd.acceptedCells)*1000);
+sd.speed_threshold = prctile(shuf_speed_data.^2,99.7); %Looking at square of correlations
+sd.speed_cells = find(sd.speedCorr.^2 >= sd.speed_threshold);
+sd.nonspeed_cells = find(sd.speedCorr.^2 < sd.speed_threshold);
 
 %% analyze models
 this_f = ones(cfg_master.smooth, 1) ./ cfg_master.smooth;
@@ -555,6 +589,7 @@ if cfg_master.writeOutput
 end
   
 end % of top-level function
+
 
 %% TODO: correlate GLM results with things like spike spectrum, STA spectrum (across cells)
 

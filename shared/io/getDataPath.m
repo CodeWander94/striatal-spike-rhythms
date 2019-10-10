@@ -61,6 +61,8 @@ switch machinename
         base_fp = 'D:\data\promoted\';
     case 'CALLISTO'
         base_fp = 'E:\data\promoted\';
+    case {'manishm'}
+        base_fp = '/Users/manishm/Work/vanDerMeerLab/ADRLabData/';
     otherwise
         error('Unrecognized machine. Edit this function: add your machine name and base data path.')
 end
