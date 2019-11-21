@@ -224,26 +224,26 @@ p.time = sd.TVECc';
 
 %% loop over all cells 
 cc = 1;
+sd.duplicateCells = [];
+sd.fewSpikes = [];
+sd.sameTT = [];
 for iC = nCells:-1:1
 
     fprintf('Cell %d/%d...\n',iC,nCells);
-    
     % skip if not turned & correlated with prev session
     if sd.S.usr.duplicate(iC) & sd.S.usr.distanceTurned(iC) < 80
         fprintf('Cell skipped - likely duplicate.\n');
+        sd.duplicateCells = [sd.duplicateCells; sd.S.label(iC), sd.S.usr.cell_type(iC)];
         continue;
     end
     
     % skip if on same tt as LFP
     if sd.S.usr.tt_num(iC) == lfp_tt
         fprintf('Cell skipped - same TT as LFP.\n');
+        sd.sameTT = [sd.sameTT; sd.S.label(iC), sd.S.usr.cell_type(iC)];
         continue;
     end
     
-    %skip if celltype is not 2 (Fast spiking interneuron)
-%     if sd.S.usr.cell_type(iC) ~= 2
-%         continue;
-%     end
     
     % dependent variable: binned spike train
     spk_binned = histc(sd.S.t{iC}, TVECe); spk_binned = spk_binned(1:end - 1);
@@ -275,6 +275,7 @@ for iC = nCells:-1:1
     %%% SKIP CELL IF NOT ENOUGH SPIKES
     if sum(spk_binned) <= cfg_master.nMinSpikes
        fprintf('\n\n*** CELL SKIPPED - INSUFFICIENT SPIKES ***\n\n');
+       sd.fewSpikes = [sd.fewSpikes; sd.S.label(iC), sd.S.usr.cell_type(iC)];
        continue;
     end
     
@@ -304,7 +305,7 @@ for iC = nCells:-1:1
     mn = fieldnames(sd.m);
     for iM = 1:length(mn)
        sd.m.(mn{iM}).err(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
-       sd.m.(mn{iM}).shufErr(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
+       sd.m.(mn{iM}).shufErr(cc, 1:cfg_master.nShuf, 1) = 0; % can't save all shuffles, so need to just save the average value
        sd.m.(mn{iM}).tstat(cc, :) = nan(1, nMaxVars);
     end
 
@@ -354,17 +355,19 @@ for iC = nCells:-1:1
         fprintf('Shuffle %d...\n', iShuf);
         
         % shift LFP data relative to spike data & fit model again
-        p_shuf = shiftLFPdata(p);
-              
+        p_shuf = shiftLFPdata2(p);
+           
         for iModel = 1:length(mn)
-            
+            %for each model, the placeholder variable needs to be set to
+            %zero at the beginning of the loop
+            this_shufErr = zeros(1, length(sd.TVECc)); 
             for iPleat = 1:cfg_master.nPleats
                 
                 for iFold = 1:C{iPleat}.NumTestSets
                     
                     tr_idx = C{iPleat}.training(iFold); te_idx = C{iPleat}.test(iFold);
                     
-                    this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial')
+                    this_m = fitglm(p_shuf(tr_idx,:), sd.m.(mn{iModel}).modelspec, 'Distribution', 'binomial');
                     
                     % refine model by throwing out ineffective predictors
                     %toss = this_m.Coefficients.Row(abs(this_m.Coefficients.tStat) < 2);
@@ -378,14 +381,18 @@ for iC = nCells:-1:1
                     this_err = this_m.predict(p_shuf(te_idx,:));
                     this_err = (this_err - spk_binned(te_idx)).^2;
                     
+                    
+                    
+                    
                     % NOTE THIS ONLY WORKS WHEN DOING 1 SHUFFLE! OTHERWISE NEED TO
                     % INDEX BY SHUFFLE
-                    sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + ((this_err ./ cfg_master.nShuf) ./ cfg_master.nPleats)';
-                    
+%                     sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + ((this_err ./ cfg_master.nShuf) ./ cfg_master.nPleats)';
+                    this_shufErr(te_idx) = this_shufErr(te_idx) + (this_err ./ cfg_master.nPleats)';
                 end % of shuffle folds
                 
             end % of pleats
-            
+        this_shuf_Err = sd.m.baseline.err(cc,:) - this_shufErr;
+        sd.m.(mn{iModel}).shufErr(cc, iShuf, 1) = nanmean(sd.m.baseline.err(cc,:) - this_shufErr);
         end % of models
         
     end % of shuffles
@@ -609,6 +616,22 @@ for iT = 1:nTrials
     lfp_shifted_data(start_idx:end_idx,rows_to_shift) = circshift(lfp_shifted_data(start_idx:end_idx,rows_to_shift), this_shift, 1);
     
 end
+
+lfp_shifted_data = array2table(lfp_shifted_data, 'VariableNames', input_data.Properties.VariableNames);
+
+end
+
+function lfp_shifted_data = shiftLFPdata2(input_data)
+% circularly shift phase rows of data table by the same amount (no concept
+% of trial in pre-trial data)
+
+this_shift = round(size(input_data, 1) * rand(1));
+
+rows_to_shift = find(cellfun(@isempty, (strfind(fieldnames(input_data),'_phase'))) == 0);
+
+lfp_shifted_data = input_data.Variables;
+
+lfp_shifted_data(:,rows_to_shift) = circshift(lfp_shifted_data(:,rows_to_shift), this_shift, 1);
 
 lfp_shifted_data = array2table(lfp_shifted_data, 'VariableNames', input_data.Properties.VariableNames);
 
