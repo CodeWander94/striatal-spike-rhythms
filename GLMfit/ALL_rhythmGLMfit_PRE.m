@@ -9,7 +9,7 @@
 cfg = [];
 cfg.writeOutput = 1;
 cfg.plotOutput = 0;
-cfg.writeFullError = 1;
+cfg.writeFullError = 0;
 cfg.output_dir = '/Users/manishm/Work/vanDerMeerLab/GLM/temp'; % store files here
 cfg.output_prefix = 'S2_'; % prefix filenames with this (identify runs)
 cfg.Target = 'Striatum';
@@ -22,7 +22,7 @@ cfg.kFold = 2; % folds per pleat
 %%
 please = [];
 %please.rats = {'R117', 'R119', 'R132'}; % testing on isidro
-please.rats = {'R132'}; % vStr-only rats
+please.rats = {'R117'}; % vStr-only rats
 %please.rats = {'R149', 'R152', 'R156', 'R159', 'R169', 'R170', 'R184', 'R192', 'R194'}; % vStr-HC
 cd('/Users/manishm/Work/vanDerMeerLab/ADRLabData/');
 [cfg.fd, cfg.fd_extra] = getDataPath(please);

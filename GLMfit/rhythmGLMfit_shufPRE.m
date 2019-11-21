@@ -380,19 +380,16 @@ for iC = nCells:-1:1
                     % test it and add resulting error to running total
                     this_err = this_m.predict(p_shuf(te_idx,:));
                     this_err = (this_err - spk_binned(te_idx)).^2;
-                    
-                    
-                    
-                    
-                    % NOTE THIS ONLY WORKS WHEN DOING 1 SHUFFLE! OTHERWISE NEED TO
-                    % INDEX BY SHUFFLE
-%                     sd.m.(mn{iModel}).shufErr(cc, te_idx) = sd.m.(mn{iModel}).shufErr(cc, te_idx) + ((this_err ./ cfg_master.nShuf) ./ cfg_master.nPleats)';
                     this_shufErr(te_idx) = this_shufErr(te_idx) + (this_err ./ cfg_master.nPleats)';
                 end % of shuffle folds
                 
             end % of pleats
-        this_shuf_Err = sd.m.baseline.err(cc,:) - this_shufErr;
-        sd.m.(mn{iModel}).shufErr(cc, iShuf, 1) = nanmean(sd.m.baseline.err(cc,:) - this_shufErr);
+        this_shufErr = sd.m.baseline.err(cc,:) - this_shufErr;
+        %smoothening
+        this_f = ones(cfg_master.smooth, 1) ./ cfg_master.smooth;
+        this_shufErr = conv(this_shufErr, this_f, 'same');
+        %saving only the mean
+        sd.m.(mn{iModel}).shufErr(cc, iShuf, 1) = nanmean(this_shufErr);
         end % of models
         
     end % of shuffles
@@ -466,13 +463,12 @@ if cfg_master.writeOutput
     
         % get error diff for this model
         this_err = sd.m.baseline.err - sd.m.(mn{iM}).err;
-        this_errShuf = sd.m.baseline.err - sd.m.(mn{iM}).shufErr;
         
         for iC = cc:-1:1
             
             % smooth
-            this_cell_err = this_err(iC,:); this_cell_errShuf = this_errShuf(iC,:);
-            this_cell_err = conv(this_cell_err, this_f, 'same'); this_cell_errShuf = conv(this_cell_errShuf, this_f, 'same');
+            this_cell_err = this_err(iC,:);
+            this_cell_err = conv(this_cell_err, this_f, 'same');
             
         end % loop over cells
     
@@ -485,7 +481,6 @@ if cfg_master.writeOutput
         sd.m.baseline.err = nanmean(sd.m.baseline.err, 2);
         for iM = 1:length(mn)
             sd.m.(mn{iM}).err = nanmean(sd.m.(mn{iM}).err, 2);
-            sd.m.(mn{iM}).shufErr = nanmean(sd.m.(mn{iM}).shufErr, 2);
         end
     end
     
