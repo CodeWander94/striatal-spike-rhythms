@@ -300,7 +300,7 @@ for iC = nCells:-1:1
     mn = fieldnames(sd.m);
     for iM = 1:length(mn)
        sd.m.(mn{iM}).err(cc, :) = zeros(1, length(sd.TVECc)); % needs to be zeros because error output will be added to this
-       sd.m.(mn{iM}).shufErr(cc, 1:cfg_master.nShuf, 1) = 0; % can't save all shuffles, so need to just save the average value
+        sd.m.(mn{iM}).shufErr(cc, 1:cfg_master.nShuf, 1:length(sd.TVECc)) = zeros(cfg_master.nShuf,length(sd.TVECc));
        sd.m.(mn{iM}).tstat(cc, :) = nan(1, nMaxVars);
     end
 
@@ -377,14 +377,8 @@ for iC = nCells:-1:1
                     this_err = (this_err - spk_binned(te_idx)).^2;
                     this_shufErr(te_idx) = this_shufErr(te_idx) + (this_err ./ cfg_master.nPleats)';
                 end % of shuffle folds
-                
             end % of pleats
-        this_shufErr = sd.m.baseline.err(cc,:) - this_shufErr;
-        %smoothening
-        this_f = ones(cfg_master.smooth, 1) ./ cfg_master.smooth;
-        this_shufErr = conv(this_shufErr, this_f, 'same');
-        %saving only the mean
-        sd.m.(mn{iModel}).shufErr(cc, iShuf, 1) = nanmean(this_shufErr);
+            sd.m.(mn{iModel}).shufErr(cc, iShuf,:) = this_shufErr;
         end % of models
         
     end % of shuffles
@@ -410,8 +404,6 @@ if cc == 0
 end
 
 %% analyze models
-this_f = ones(cfg_master.smooth, 1) ./ cfg_master.smooth;
-
 if cfg_master.plotOutput
     
     
@@ -451,24 +443,7 @@ end
 %% prepare and write output
 if cfg_master.writeOutput
 
-    sd.cfg = cfg_master;
-    
-    % compute difference TCs for each model and each cell
-    for iM = 1:length(mn)
-    
-        % get error diff for this model
-        this_err = sd.m.baseline.err - sd.m.(mn{iM}).err;
-        
-        for iC = cc:-1:1
-            
-            % smooth
-            this_cell_err = this_err(iC,:);
-            this_cell_err = conv(this_cell_err, this_f, 'same');
-            
-        end % loop over cells
-    
-    end % loop over models
-    
+    sd.cfg = cfg_master;    
     % if requested, save full error variables
     if cfg_master.writeFullError
         fprintf('\n*** WARNING: saving full error variables in output! (may take up GB''s of space!\n\n');
@@ -476,6 +451,7 @@ if cfg_master.writeOutput
         sd.m.baseline.err = nanmean(sd.m.baseline.err, 2);
         for iM = 1:length(mn)
             sd.m.(mn{iM}).err = nanmean(sd.m.(mn{iM}).err, 2);
+            sd.m.(mn{iM}).shufErr = nanmean(sd.m.(mn{iM}).shufErr, 3);
         end
     end
     

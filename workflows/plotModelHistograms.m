@@ -1,8 +1,8 @@
 %%Plot the prediction improvement of models across days%%
-cd('/Users/manishm/Work/vanDerMeerLab/GLM/temp/')
+cd('/Users/manishm/Work/vanDerMeerLab/GLM/PreTrial')
 rats = {'R117','R119','R131','R132'};
 %rats = {'R132'};
-models = {'dphi', 'tphi', 'bphi', 'lgphi', 'hgphi'};
+models = {'dphi', 'tphi', 'bphi', 'lgphi', 'hgphi', 'allphi'};
 mod_pred = {};
 for idx = 1:length(models)
     mod_pred.(models{idx}) = [];
