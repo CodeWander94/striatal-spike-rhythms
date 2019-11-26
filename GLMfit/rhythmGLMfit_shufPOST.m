@@ -452,10 +452,11 @@ if cfg_master.writeOutput
         shuf_baseline = sd.m.baseline.shufErr;
         for iM = 1:length(mn)
             %save model improvement and not means of errors
+            this_shufErr = shuf_baseline - sd.m.(mn{iM}).shufErr;
             sd.m.(mn{iM}).err = nanmean((baseline_err - sd.m.(mn{iM}).err), 2);
-            sd.m.(mn{iM}).shufErr = nanmean((shuf_baseline - sd.m.(mn{iM}).shufErr), 3);
-            sd.m.(mn{iM}).meanShufErr = squeeze(nanmean((shuf_baseline - sd.m.(mn{iM}).shufErr), 2));
-            sd.m.(mn{iM}).stdShufErr = squeeze(nanstd(sd.m.(mn{iM}).shufErr, 0, 2));
+            sd.m.(mn{iM}).shufErr = nanmean(this_shufErr, 3);
+            sd.m.(mn{iM}).meanShufErr = squeeze(nanmean(this_shufErr, 2));
+            sd.m.(mn{iM}).stdShufErr = squeeze(nanstd(this_shufErr, 0, 2));
         end
     end
     
