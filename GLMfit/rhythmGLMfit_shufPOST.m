@@ -448,10 +448,14 @@ if cfg_master.writeOutput
     if cfg_master.writeFullError
         fprintf('\n*** WARNING: saving full error variables in output! (may take up GB''s of space!\n\n');
     else % set error fields to average across samples
-        sd.m.baseline.err = nanmean(sd.m.baseline.err, 2);
+        baseline_err = sd.m.baseline.err;
+        shuf_baseline = sd.m.baseline.shufErr;
         for iM = 1:length(mn)
-            sd.m.(mn{iM}).err = nanmean(sd.m.(mn{iM}).err, 2);
-            sd.m.(mn{iM}).shufErr = nanmean(sd.m.(mn{iM}).shufErr, 3);
+            %save model improvement and not means of errors
+            sd.m.(mn{iM}).err = nanmean((baseline_err - sd.m.(mn{iM}).err), 2);
+            sd.m.(mn{iM}).shufErr = nanmean((shuf_baseline - sd.m.(mn{iM}).shufErr), 3);
+            sd.m.(mn{iM}).meanShufErr = squeeze(nanmean((shuf_baseline - sd.m.(mn{iM}).shufErr), 2));
+            sd.m.(mn{iM}).stdShufErr = squeeze(nanstd(sd.m.(mn{iM}).shufErr, 0, 2));
         end
     end
     
