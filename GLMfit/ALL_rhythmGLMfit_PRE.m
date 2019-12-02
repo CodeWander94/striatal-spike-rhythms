@@ -9,12 +9,12 @@
 cfg = [];
 cfg.writeOutput = 1;
 cfg.plotOutput = 0;
-cfg.writeFullError = 0;
+cfg.writeFullError = 1;
 cfg.output_dir = '/Users/manishm/Work/vanDerMeerLab/GLM/temp'; % store files here
-cfg.output_prefix = 'S2Pre_'; % prefix filenames with this (identify runs)
+cfg.output_prefix = 'S2PreFull_'; % prefix filenames with this (identify runs)
 cfg.Target = 'Striatum';
 cfg.nMinSpikes = 100;
-cfg.nShuf = 10;
+cfg.nShuf = 0;
 
 cfg.nPleats = 1; % number of pleats (cross-validation runs) per cell
 cfg.kFold = 2; % folds per pleat

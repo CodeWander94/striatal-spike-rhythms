@@ -1,5 +1,5 @@
 %%Plot the prediction improvement of models across days%%
-cd('/Users/manishm/Work/vanDerMeerLab/GLM/temp/')
+cd('/Users/manishm/Work/vanDerMeerLab/GLM/temp/PreTrial')
 rats = {'R119'};
 for idx = 1:length(rats)
     curRat = rats{idx};
