@@ -17,17 +17,12 @@ for idx = 1:length(rats)
         N = length(sd.cellType);
         for iC = 1:N
             for iM = 1:length(models)
-                mod_pred.(models{iM}) = [mod_pred.(models{iM});str2double(curRat(2:end)),sd.cellType(iC),sd.m.(models{iM}).shufErr(iC,:)];
+                mod_pred.(models{iM}) = [mod_pred.(models{iM});str2double(curRat(2:end)),sd.cellType(iC),mean(sd.m.(models{iM}).shufErr(iC,:))];
             end
         end
     end
 end
 %% For dphi
-c_all = mod_pred.dphi(:,3:12);
-c_all = c_all(:);
-c0 = mod_pred.dphi(:,2) == 0;
-c_0 = mod_pred.dphi(c0,3:12);
-c_0 = c_0(:);
 c1 = mod_pred.dphi(:,2) == 1;
 c_1 = mod_pred.dphi(c1,3:12);
 c_1 = c_1(:);
@@ -92,11 +87,6 @@ text(0.000005,100,strcat('Percentage of improved models :',{' '}, num2str(round(
 hold off;
 
 %% For tphi
-c_all = mod_pred.tphi(:,3:12);
-c_all = c_all(:);
-c0 = mod_pred.tphi(:,2) == 0;
-c_0 = mod_pred.tphi(c0,3:12);
-c_0 = c_0(:);
 c1 = mod_pred.tphi(:,2) == 1;
 c_1 = mod_pred.tphi(c1,3:12);
 c_1 = c_1(:);
@@ -301,11 +291,6 @@ hold off;
 
 
 %% For hgphi
-c_all = mod_pred.hgphi(:,3:12);
-c_all = c_all(:);
-c0 = mod_pred.hgphi(:,2) == 0;
-c_0 = mod_pred.hgphi(c0,3:12);
-c_0 = c_0(:);
 c1 = mod_pred.hgphi(:,2) == 1;
 c_1 = mod_pred.hgphi(c1,3:12);
 c_1 = c_1(:);
@@ -370,11 +355,6 @@ text(0.000005,100,strcat('Percentage of improved models :',{' '}, num2str(round(
 hold off;
 
 %% For allphi
-c_all = mod_pred.allphi(:,3:12);
-c_all = c_all(:);
-c0 = mod_pred.allphi(:,2) == 0;
-c_0 = mod_pred.allphi(c0,3:12);
-c_0 = c_0(:);
 c1 = mod_pred.allphi(:,2) == 1;
 c_1 = mod_pred.allphi(c1,3:12);
 c_1 = c_1(:);

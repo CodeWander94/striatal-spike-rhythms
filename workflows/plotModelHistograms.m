@@ -10,7 +10,7 @@ end
 
 for idx = 1:length(rats)
     curRat = rats{idx};
-    searchString = strcat('S2_',curRat,'*sd.mat');
+    searchString = strcat('S2Pre_',curRat,'*sd.mat');
     ofiles = dir(searchString);
     for jdx = 1:length(ofiles)
         load(ofiles(jdx).name);
