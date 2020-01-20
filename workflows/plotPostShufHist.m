@@ -42,54 +42,102 @@ for iM = 1:length(models)
     c_12s = [c_1s;c_2s];
     c_12d = c_12 - c_12s;
     figure;
-    bin_edges = -0.00002:0.0000005:0.00005;
+    bin_edges = -0.00001:0.0000005:0.00005;
     histogram(c_1s,bin_edges,'FaceColor','red', 'FaceAlpha',0.4);
     hold on
     histogram(c_1,bin_edges,'FaceColor','green', 'FaceAlpha',0.4);
-    title(strcat((models{iM}),' - type 1'), 'fontsize',40);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 200];
+    output_name = strcat('Post task', {' '}, (models{iM}),' - type 1');
+    title(output_name, 'fontsize',30);
+    xlabel('Model Improvement', 'FontSize', 15);
+    WriteFig(output_name{1})
     figure;
-    bin_edges = -0.00002:0.0000005:0.00005;
+    bin_edges = -0.00001:0.0000005:0.00005;
     histogram(c_2s,bin_edges,'FaceColor','red', 'FaceAlpha',0.4);
     hold on
     histogram(c_2,bin_edges,'FaceColor','green', 'FaceAlpha',0.4);
-    title(strcat((models{iM}),' - type 2'), 'fontsize',40);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 80];
+    output_name = strcat('Post task', {' '}, (models{iM}),' - type 2');
+    title(output_name, 'fontsize',30);
+    xlabel('Model Improvement', 'FontSize', 15);
+    WriteFig(output_name{1})
     figure;
-    bin_edges = -0.00002:0.0000005:0.00005;
+    bin_edges = -0.00001:0.0000005:0.00005;
     histogram(c_12s,bin_edges,'FaceColor','red', 'FaceAlpha',0.4);
     hold on
     histogram(c_12,bin_edges,'FaceColor','green', 'FaceAlpha',0.4);
-    title(strcat((models{iM}),' - type 1 and 2'), 'fontsize',40);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 250];
+    output_name = strcat('Post task', {' '}, (models{iM}),' - type 1 and 2');
+    title(output_name, 'fontsize',30);
+    xlabel('Model Improvement', 'FontSize', 15);
+    WriteFig(output_name{1})
     figure;
     mask = c_1d > 0;
     bin_edges = -0.00001:0.0000005:0.00005;
     histogram(c_1d(mask),bin_edges,'FaceColor','green');
     hold on;
     histogram(c_1d(~mask),bin_edges,'FaceColor','red');
-    title(strcat((models{iM}),' - type 1'), 'fontsize',40);
     hold on;
     pc = 100 * sum(mask)/length(mask);
-    text(0.00002,5,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',12);
+    text(0.00002,25,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',15);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 30];
+    output_name = strcat('Post task (Real - shuffle) ', {' '}, (models{iM}),' - type 1');
+    title(output_name, 'fontsize',25);
+    xlabel('Model Improvement', 'FontSize', 15);
     hold off;
+    WriteFig(output_name{1})
     figure;
     mask = c_2d > 0;
     histogram(c_2d(mask),bin_edges,'FaceColor','green');
     hold on;
     histogram(c_2d(~mask),bin_edges,'FaceColor','red');
-    title(strcat((models{iM}),' - type 2'), 'fontsize',40);
     hold on;
     pc = 100 * sum(mask)/length(mask);
-    text(0.00002,5,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',12);
+    text(0.00002,8,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',15);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 10];
+    output_name = strcat('Post task (Real - shuffle) ', {' '}, (models{iM}),' - type 2');
+    title(output_name, 'fontsize',25);
+    xlabel('Model Improvement', 'FontSize', 15);
     hold off;
+    WriteFig(output_name{1})
     figure;
     mask = c_12d > 0;
     histogram(c_12d(mask),bin_edges,'FaceColor','green');
     hold on;
     histogram(c_12d(~mask),bin_edges,'FaceColor','red');
-    title(strcat((models{iM}),' - type 1 and 2'), 'fontsize',40);
     hold on;
     pc = 100 * sum(mask)/length(mask);
-    text(0.00002,5,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',12);
+    text(0.00002,25,strcat('Percentage of improved models :',{' '}, num2str(round(pc,2))),'fontsize',15);
+    ax = gca;
+    ax.Box = 'off';
+    ax.FontSize = 15;
+    ax.TickDir = 'out';
+    ax.YLim = [0 35];
+    output_name = strcat('Post task (Real - shuffle) ', {' '}, (models{iM}),' - type 1 and 2');
+    title(output_name, 'fontsize',25);
+    xlabel('Model Improvement', 'FontSize', 15);
     hold off;
+    WriteFig(output_name{1})
 end
 
 % %% Box Plots
